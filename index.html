@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Invoice Generator</title>
+<meta name="theme-color" content="#3d1e6d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --green:#0f9d6b; --green-dark:#0b6e4f; --gold:#e8b93f; --purple:#3d1e6d; --purple-dark:#1b0e2e;
+    --bg:#f7f4fb; --card:#ffffff; --text:#1f1330; --muted:#6f6280; --border:#e6e0f0;
+  }
+  [data-theme="dark"]{
+    --green:#17b881; --green-dark:#0f9d6b; --gold:#f2c94c; --purple:#5a2fa0; --purple-dark:#0d0620;
+    --bg:#0d0620; --card:#1a1030; --text:#f1ecfb; --muted:#a89bc4; --border:#2e2050;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);padding-bottom:40px;}
+  header{position:relative;background:linear-gradient(135deg,var(--purple),var(--purple-dark));background-image:linear-gradient(135deg,var(--purple),var(--purple-dark)),repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0px,rgba(255,255,255,.05) 2px,transparent 2px,transparent 14px);color:#fff;padding:22px 18px 26px;text-align:center;border-bottom:4px solid var(--gold);}
+  header h1{margin:0 0 4px;font-size:1.25rem;}
+  header p{margin:0;font-size:.82rem;opacity:.9;}
+  .theme-toggle{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .tabs{display:flex;max-width:640px;margin:16px auto 0;padding:0 14px;gap:8px;overflow-x:auto;}
+  .tab-btn{flex:0 0 auto;padding:10px 14px;border-radius:10px;background:var(--card);color:var(--muted);font-weight:600;font-size:.85rem;cursor:pointer;border:1px solid var(--border);white-space:nowrap;}
+  .tab-btn.active{background:var(--green);color:#fff;border-color:var(--green);}
+  main{max-width:640px;margin:14px auto 0;padding:0 14px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .panel{display:none;} .panel.active{display:block;}
+  label{font-size:.82rem;color:var(--muted);display:block;margin:10px 0 5px;}
+  input, textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:.95rem;background:var(--card);color:var(--text);font-family:inherit;}
+  textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .items-table{width:100%;border-collapse:collapse;margin-top:10px;}
+  .items-table th{font-size:.7rem;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px;border-bottom:1px solid var(--border);}
+  .items-table td{padding:6px 4px;vertical-align:top;}
+  .items-table input{padding:8px;font-size:.85rem;}
+  .item-desc{width:100%;} .item-qty{width:100%;} .item-price{width:100%;}
+  .item-remove{background:none;border:none;color:#b3261e;font-size:1.1rem;cursor:pointer;padding:4px;}
+  .add-row-btn{margin-top:8px;width:100%;padding:10px;border:1px dashed var(--border);border-radius:8px;background:none;color:var(--muted);font-weight:600;cursor:pointer;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
+  .checkbox-row input{width:auto;}
+  .totals{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+  .totals-row{display:flex;justify-content:space-between;padding:4px 0;font-size:.9rem;}
+  .totals-row.grand{font-size:1.2rem;font-weight:700;color:var(--green-dark);border-top:1px solid var(--border);margin-top:6px;padding-top:10px;}
+  .action-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .btn{flex:1;min-width:120px;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:600;font-size:.85rem;cursor:pointer;}
+  .btn.primary{background:var(--green);color:#fff;border-color:var(--green);}
+  .btn.gold{background:var(--gold);color:#3a2c00;border-color:var(--gold);}
+  .btn.copied{background:var(--green);color:#fff;}
+  .saved-item{padding:12px 0;border-bottom:1px solid var(--border);}
+  .saved-item:last-child{border-bottom:none;}
+  .saved-top{display:flex;justify-content:space-between;font-size:.9rem;}
+  .saved-date{font-size:.72rem;color:var(--muted);}
+  .saved-amount{font-weight:700;color:var(--green-dark);}
+  .saved-actions{margin-top:6px;display:flex;gap:14px;}
+  .saved-actions button{background:none;border:none;color:var(--muted);font-size:.78rem;text-decoration:underline;cursor:pointer;padding:0;}
+  .empty-note{color:var(--muted);font-size:.85rem;text-align:center;padding:10px 0;}
+  .clear-btn{width:100%;margin-top:10px;padding:11px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-weight:600;cursor:pointer;}
+
+  /* Printable preview */
+  #invoicePreview{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #invoicePreview, #invoicePreview *{visibility:visible;}
+    #invoicePreview{display:block;position:absolute;top:0;left:0;width:100%;padding:20px;color:#000;background:#fff;}
+    header, .tabs, .action-row, .clear-btn{display:none !important;}
+  }
+  .preview-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--green);padding-bottom:12px;margin-bottom:14px;}
+  .preview-biz h2{margin:0 0 4px;color:var(--green-dark);}
+  .preview-biz p{margin:0;font-size:.85rem;color:var(--muted);}
+  .preview-meta{text-align:right;font-size:.85rem;}
+  .preview-table{width:100%;border-collapse:collapse;margin:14px 0;}
+  .preview-table th, .preview-table td{padding:8px;border-bottom:1px solid var(--border);text-align:left;font-size:.88rem;}
+  .preview-table th{color:var(--muted);font-size:.72rem;text-transform:uppercase;}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+  <h1>🧾 Invoice Generator</h1>
+  <p>Create, save, and share invoices in seconds</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="new">New Invoice</button>
+  <button class="tab-btn" data-tab="saved">Saved</button>
+  <button class="tab-btn" data-tab="settings">My Business</button>
+</div>
+
+<main>
+  <!-- NEW INVOICE -->
+  <section class="panel active" id="panel-new">
+    <div class="card">
+      <div class="row2">
+        <div>
+          <label for="invNumber">Invoice #</label>
+          <input type="text" id="invNumber">
+        </div>
+        <div>
+          <label for="invDate">Date</label>
+          <input type="date" id="invDate">
+        </div>
+      </div>
+      <label for="clientName">Client Name</label>
+      <input type="text" id="clientName" placeholder="e.g. Chidi Okafor">
+      <label for="clientContact">Client Phone / Email (optional)</label>
+      <input type="text" id="clientContact" placeholder="08012345678">
+
+      <label style="margin-top:16px;">Items</label>
+      <table class="items-table">
+        <thead><tr><th>Description</th><th style="width:50px;">Qty</th><th style="width:90px;">Price (₦)</th><th></th></tr></thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+      <button class="add-row-btn" id="addItemBtn">+ Add Item</button>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="addVat">
+        <label for="addVat" style="margin:0;">Add VAT (7.5%)</label>
+      </div>
+      <label for="discount">Discount (₦, optional)</label>
+      <input type="number" id="discount" placeholder="0">
+      <label for="notes">Notes (e.g. payment details)</label>
+      <textarea id="notes" placeholder="Bank: ... Account: ... Due within 7 days"></textarea>
+
+      <div class="totals">
+        <div class="totals-row"><span>Subtotal</span><span id="subtotalOut">₦0</span></div>
+        <div class="totals-row"><span>VAT (7.5%)</span><span id="vatOut">₦0</span></div>
+        <div class="totals-row"><span>Discount</span><span id="discountOut">−₦0</span></div>
+        <div class="totals-row grand"><span>Total</span><span id="grandOut">₦0</span></div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn primary" id="saveInvoiceBtn">💾 Save</button>
+        <button class="btn" id="copyInvoiceBtn">📋 Copy</button>
+        <button class="btn gold" id="printInvoiceBtn">🖨️ Print / PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAVED -->
+  <section class="panel" id="panel-saved">
+    <div class="card">
+      <div id="savedList"><p class="empty-note">No saved invoices yet.</p></div>
+      <button class="clear-btn" id="clearSavedBtn">Clear All Saved Invoices</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="panel" id="panel-settings">
+    <div class="card">
+      <label for="bizName">Business Name</label>
+      <input type="text" id="bizName" placeholder="e.g. SIRRADDO Designs">
+      <label for="bizContact">Phone / Email</label>
+      <input type="text" id="bizContact" placeholder="08012345678 · you@email.com">
+      <label for="bizLink">Website / Store Link</label>
+      <input type="text" id="bizLink" placeholder="selar.com/5qk8jo8ef7">
+      <button class="btn primary" id="saveSettingsBtn" style="margin-top:14px;width:100%;">Save Business Info</button>
+    </div>
+    <p class="empty-note">This info auto-fills the header of every invoice you create.</p>
+  </section>
+
+  <p style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px;">Tip: "Add to Home Screen" from your browser menu to use this offline like a normal app.</p>
+</main>
+
+<!-- Hidden printable preview, filled in before printing -->
+<div id="invoicePreview">
+  <div class="preview-header">
+    <div class="preview-biz">
+      <h2 id="pBizName"></h2>
+      <p id="pBizContact"></p>
+      <p id="pBizLink"></p>
+    </div>
+    <div class="preview-meta">
+      <div><strong>Invoice #<span id="pInvNumber"></span></strong></div>
+      <div id="pInvDate"></div>
+    </div>
+  </div>
+  <p><strong>Billed to:</strong> <span id="pClientName"></span> <span id="pClientContact"></span></p>
+  <table class="preview-table">
+    <thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+    <tbody id="pItemsBody"></tbody>
+  </table>
+  <div style="text-align:right;">
+    <div>Subtotal: <span id="pSubtotal"></span></div>
+    <div id="pVatRow">VAT: <span id="pVat"></span></div>
+    <div id="pDiscountRow">Discount: <span id="pDiscount"></span></div>
+    <div style="font-size:1.2rem;font-weight:700;margin-top:6px;">Total: <span id="pGrand"></span></div>
+  </div>
+  <p id="pNotes" style="margin-top:20px;font-size:.85rem;color:#555;"></p>
+</div>
+
+<script>
+  const fmt = n => '₦' + Number(n).toLocaleString('en-NG', { maximumFractionDigits: 2 });
+
+  // ---- Tabs ----
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if(btn.dataset.tab === 'saved') renderSaved();
+    });
+  });
+
+  // ---- Theme ----
+  const themeToggle = document.getElementById('themeToggle');
+  const root = document.documentElement;
+  function applyTheme(t){
+    if(t === 'dark'){ root.setAttribute('data-theme','dark'); themeToggle.textContent = '☀️'; }
+    else { root.removeAttribute('data-theme'); themeToggle.textContent = '🌙'; }
+  }
+  applyTheme(localStorage.getItem('invoice-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  themeToggle.addEventListener('click', () => {
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem('invoice-theme', next);
+  });
+
+  // ---- Business settings ----
+  const BIZ_KEY = 'invoice-biz-info';
+  function loadBiz(){ try{ return JSON.parse(localStorage.getItem(BIZ_KEY)) || {}; }catch(e){ return {}; } }
+  function fillBizFields(){
+    const b = loadBiz();
+    document.getElementById('bizName').value = b.name || '';
+    document.getElementById('bizContact').value = b.contact || '';
+    document.getElementById('bizLink').value = b.link || '';
+  }
+  document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+    const biz = {
+      name: document.getElementById('bizName').value,
+      contact: document.getElementById('bizContact').value,
+      link: document.getElementById('bizLink').value
+    };
+    localStorage.setItem(BIZ_KEY, JSON.stringify(biz));
+    alert('Business info saved.');
+  });
+  fillBizFields();
+
+  // ---- Items ----
+  const itemsBody = document.getElementById('itemsBody');
+  let itemCounter = 0;
+
+  function addItemRow(desc = '', qty = 1, price = ''){
+    itemCounter++;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="item-desc" placeholder="Item / service" value="${desc}"></td>
+      <td><input type="number" class="item-qty" min="1" value="${qty}"></td>
+      <td><input type="number" class="item-price" placeholder="0" value="${price}"></td>
+      <td><button class="item-remove" type="button">✕</button></td>`;
+    itemsBody.appendChild(tr);
+    tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateTotals));
+    tr.querySelector('.item-remove').addEventListener('click', () => { tr.remove(); updateTotals(); });
+  }
+
+  document.getElementById('addItemBtn').addEventListener('click', () => addItemRow());
+  addItemRow();
+
+  function getItems(){
+    return Array.from(itemsBody.querySelectorAll('tr')).map(tr => ({
+      desc: tr.querySelector('.item-desc').value || 'Item',
+      qty: Number(tr.querySelector('.item-qty').value) || 0,
+      price: Number(tr.querySelector('.item-price').value) || 0
+    })).filter(i => i.qty > 0 && i.price >= 0);
+  }
+
+  function computeTotals(){
+    const items = getItems();
+    const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0);
+    const vat = document.getElementById('addVat').checked ? subtotal * 0.075 : 0;
+    const discount = Number(document.getElementById('discount').value) || 0;
+    const grand = Math.max(0, subtotal + vat - discount);
+    return { items, subtotal, vat, discount, grand };
+  }
+
+  function updateTotals(){
+    const { subtotal, vat, discount, grand } = computeTotals();
+    document.getElementById('subtotalOut').textContent = fmt(subtotal);
+    document.getElementById('vatOut').textContent = fmt(vat);
+    document.getElementById('discountOut').textContent = '−' + fmt(discount);
+    document.getElementById('grandOut').textContent = fmt(grand);
+  }
+
+  document.getElementById('addVat').addEventListener('change', updateTotals);
+  document.getElementById('discount').addEventListener('input', updateTotals);
+  updateTotals();
+
+  // Default invoice number and date
+  document.getElementById('invDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('invNumber').value = 'INV-' + Date.now().toString().slice(-6);
+
+  // ---- Copy as text ----
+  function invoiceText(){
+    const biz = loadBiz();
+    const { items, subtotal, vat, discount, grand } = computeTotals();
+    const lines = [];
+    if(biz.name) lines.push(biz.name);
+    if(biz.contact) lines.push(biz.contact);
+    lines.push('---');
+    lines.push(`Invoice #${document.getElementById('invNumber').value} · ${document.getElementById('invDate').value}`);
+    lines.push(`Billed to: ${document.getElementById('clientName').value || '—'} ${document.getElementById('clientContact').value || ''}`.trim());
+    lines.push('---');
+    items.forEach(i => lines.push(`${i.desc} x${i.qty} — ${fmt(i.qty * i.price)}`));
+    lines.push('---');
+    lines.push(`Subtotal: ${fmt(subtotal)}`);
+    if(vat > 0) lines.push(`VAT: ${fmt(vat)}`);
+    if(discount > 0) lines.push(`Discount: -${fmt(discount)}`);
+    lines.push(`Total: ${fmt(grand)}`);
+    const notes = document.getElementById('notes').value;
+    if(notes) { lines.push('---'); lines.push(notes); }
+    return lines.join('\n');
+  }
+
+  function copyToClipboard(text, btn){
+    const done = () => {
+      if(!btn) return;
+      const original = btn.textContent;
+      btn.textContent = '✓ Copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else { fallbackCopy(text, done); }
+  }
+  function fallbackCopy(text, done){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  document.getElementById('copyInvoiceBtn').addEventListener('click', (e) => {
+    copyToClipboard(invoiceText(), e.currentTarget);
+  });
+
+  // ---- Print / PDF ----
+  document.getElementById('printInvoiceBtn').addEventListener('click', () => {
+    const biz = loadBiz();
+    const { items, subtotal, vat, discount, grand } = computeTotals();
+    document.getElementById('pBizName').textContent = biz.name || 'Your Business Name';
+    document.getElementById('pBizContact').textContent = biz.contact || '';
+    document.getElementById('pBizLink').textContent = biz.link || '';
+    document.getElementById('pInvNumber').textContent = document.getElementById('invNumber').value;
+    document.getElementById('pInvDate').textContent = document.getElementById('invDate').value;
+    document.getElementById('pClientName').textContent = document.getElementById('clientName').value || '—';
+    document.getElementById('pClientContact').textContent = document.getElementById('clientContact').value || '';
+    document.getElementById('pItemsBody').innerHTML = items.map(i => `
+      <tr><td>${i.desc}</td><td>${i.qty}</td><td>${fmt(i.price)}</td><td>${fmt(i.qty*i.price)}</td></tr>
+    `).join('');
+    document.getElementById('pSubtotal').textContent = fmt(subtotal);
+    document.getElementById('pVatRow').style.display = vat > 0 ? 'block' : 'none';
+    document.getElementById('pVat').textContent = fmt(vat);
+    document.getElementById('pDiscountRow').style.display = discount > 0 ? 'block' : 'none';
+    document.getElementById('pDiscount').textContent = fmt(discount);
+    document.getElementById('pGrand').textContent = fmt(grand);
+    document.getElementById('pNotes').textContent = document.getElementById('notes').value || '';
+    window.print();
+  });
+
+  // ---- Save / History ----
+  const HISTORY_KEY = 'invoice-history';
+  function loadHistory(){ try{ return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }catch(e){ return []; } }
+  function persistHistory(list){ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+
+  document.getElementById('saveInvoiceBtn').addEventListener('click', () => {
+    const { grand } = computeTotals();
+    const list = loadHistory();
+    list.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      invNumber: document.getElementById('invNumber').value,
+      client: document.getElementById('clientName').value || 'Unnamed client',
+      amount: grand,
+      date: new Date().toISOString(),
+      text: invoiceText()
+    });
+    persistHistory(list.slice(0, 200));
+    alert('Invoice saved.');
+  });
+
+  function renderSaved(){
+    const list = loadHistory();
+    const container = document.getElementById('savedList');
+    if(list.length === 0){
+      container.innerHTML = '<p class="empty-note">No saved invoices yet.</p>';
+      return;
+    }
+    container.innerHTML = list.map(item => {
+      const d = new Date(item.date);
+      const dateStr = d.toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
+      return `
+        <div class="saved-item">
+          <div class="saved-top">
+            <span>${item.invNumber} — ${item.client}</span>
+            <span class="saved-amount">${fmt(item.amount)}</span>
+          </div>
+          <div class="saved-date">${dateStr}</div>
+          <div class="saved-actions">
+            <button class="copy-saved" data-id="${item.id}">Copy</button>
+            <button class="delete-saved" data-id="${item.id}">Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    container.querySelectorAll('.copy-saved').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = loadHistory().find(i => i.id === btn.dataset.id);
+        if(item) copyToClipboard(item.text, btn);
+      });
+    });
+    container.querySelectorAll('.delete-saved').forEach(btn => {
+      btn.addEventListener('click', () => {
+        persistHistory(loadHistory().filter(i => i.id !== btn.dataset.id));
+        renderSaved();
+      });
+    });
+  }
+
+  document.getElementById('clearSavedBtn').addEventListener('click', () => {
+    if(confirm('Clear all saved invoices? This cannot be undone.')){
+      persistHistory([]);
+      renderSaved();
+    }
+  });
+
+  // ---- PWA service worker ----
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+</script>
+
+</body>
+</html>
